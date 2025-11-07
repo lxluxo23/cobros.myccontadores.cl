@@ -29,34 +29,37 @@ function MyContadores() {
         const fetchClients = async () => {
             setLoading(true);
             try {
-                const response = await axios.get(`${config.apiUrl}/api/clientes`);
-                console.log("Respuesta del backend:", response.data);
+                const { data: raw } = await axios.get(`${config.apiUrl}/api/clientes`);
 
-                // Detecta si la respuesta es un array o un objeto con propiedades internas
-                let clientes = [];
+                // Normaliza distintas formas de respuesta del backend
+                const arr = Array.isArray(raw)
+                    ? raw
+                    : Array.isArray(raw?.data)
+                        ? raw.data
+                        : Array.isArray(raw?.clientes)
+                            ? raw.clientes
+                            : [];
 
-                if (Array.isArray(response.data)) {
-                    clientes = response.data;
-                } else if (Array.isArray(response.data.content)) {
-                    clientes = response.data.content;
-                } else if (Array.isArray(response.data.clientes)) {
-                    clientes = response.data.clientes;
-                } else {
+                if (!Array.isArray(arr)) {
                     throw new Error("Formato inesperado de respuesta del backend");
                 }
 
-                // Ordenar los clientes por nombre, si tienen la propiedad "nombre"
-                clientes.sort((a, b) => (a.nombre ?? "").localeCompare(b.nombre ?? ""));
+                // Orden seguro (si falta nombre no crashea)
+                const sortedClients = [...arr].sort((a, b) =>
+                    (a?.nombre ?? "").localeCompare(b?.nombre ?? "")
+                );
 
-                setClients(clientes);
+                setClients(sortedClients);
             } catch (error) {
-                console.error("Error al cargar los clientes:", error.message);
-                setClients([]);
+                console.error(
+                    "Error al cargar los clientes:",
+                    error.response?.data || error.message
+                );
+                setClients([]); // evita estado inconsistente
             } finally {
                 setLoading(false);
             }
         };
-
         fetchClients();
     }, []);
 
