@@ -79,12 +79,10 @@ const DebtsPage = () => {
             return;
         }
         try {
-            const response = await fetch(
-                `${config.apiUrl}/api/deudas/filtro-fechas?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&page=0&size=10`
-            );
+            const response = await fetch(`${config.apiUrl}/api/deudas/filtro-fechas?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`);
             if (!response.ok) throw new Error("Error al filtrar deudas por fecha");
             const data = await response.json();
-            setDebts(data.content);
+            setDebts(data);
             setError(null);
         } catch (error) {
             setError("No se pudo filtrar las deudas. Inténtalo de nuevo.");
@@ -93,12 +91,10 @@ const DebtsPage = () => {
 
     const mostrarPendientes = async () => {
         try {
-            const response = await fetch(
-                `${config.apiUrl}/api/deudas/usuario/${clienteId}/pendientes?page=0&size=10`
-            );
+            const response = await fetch(`${config.apiUrl}/api/deudas/usuario/${clienteId}/pendientes`);
             if (!response.ok) throw new Error("Error al cargar deudas pendientes");
             const data = await response.json();
-            setDebts(data.content);
+            setDebts(data);
             setError(null);
         } catch (error) {
             setError("No se pudo cargar las deudas pendientes. Inténtalo de nuevo.");

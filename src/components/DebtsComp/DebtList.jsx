@@ -1,19 +1,22 @@
 import React from "react";
 import { FaEye, FaTrash, FaEdit, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import dayjs from "dayjs";
+import Spinner from "./Spinner";
 
 const DebtList = ({
                       debts,
                       currentPage,
-                      totalPages,
-                      totalElements,
                       onPageChange,
                       handleViewDetails,
                       handleDeleteDebt,
                       handleEditDebt,
                   }) => {
+    const itemsPerPage = 10;
+    const paginatedData = (data, currentPage) =>
+        data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl">
+        <div className="bg-white dark:bg-gray-800 rounded-xl =">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">
                 Deudas Normales
             </h3>
@@ -39,7 +42,7 @@ const DebtList = ({
                             </td>
                         </tr>
                     ) : (
-                        debts.map((debt) => (
+                        paginatedData(debts, currentPage).map((debt) => (
                             <tr
                                 key={debt.deudaId}
                                 className="border-b dark:border-gray-700 hover:bg-indigo-100 dark:hover:bg-gray-600 transition-colors duration-200"
@@ -121,10 +124,10 @@ const DebtList = ({
                     <FaChevronLeft className="text-gray-500 dark:text-gray-300" />
                 </button>
                 <span className="text-sm dark:text-gray-400">
-                    Página {currentPage} de {totalPages} ({totalElements} registros)
-                </span>
+    Página {currentPage} de {itemsPerPage}
+  </span>
                 <button
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === itemsPerPage}
                     onClick={() => onPageChange(currentPage + 1)}
                     title="Página siguiente"
                     className="p-3 bg-gray-200 dark:bg-gray-700 rounded-full disabled:opacity-50 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
@@ -132,6 +135,7 @@ const DebtList = ({
                     <FaChevronRight className="text-gray-500 dark:text-gray-300" />
                 </button>
             </div>
+
         </div>
     );
 };

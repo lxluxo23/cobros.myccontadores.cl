@@ -14,8 +14,6 @@ import { config } from "../../config/config";
 const HonoraryList = ({
                           honorariosContables,
                           currentPage,
-                          totalPages,
-                          totalElements,  // NUEVO
                           onPageChange,
                           handleViewHonorarioDetails,
                           handleDeleteHonorario,
@@ -34,6 +32,35 @@ const HonoraryList = ({
     const [selectedMes, setSelectedMes] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedHonorarioDetails, setSelectedHonorarioDetails] = useState(null);
+
+    // Aplanar la estructura: cada fila corresponde a un mes de honorario
+    const flatRows = useMemo(() => {
+        let rows = [];
+        honorariosContables.forEach((honorario) => {
+            honorario.meses.forEach((mes) => {
+                rows.push({
+                    honorarioId: honorario.honorarioId,
+                    anio: honorario.anio,
+                    mes: mes.mes, // número de mes (1-12)
+                    montoMensual: mes.montoMensual,
+                    montoPagado: mes.montoPagado,
+                    estado: mes.estado,
+                });
+            });
+        });
+        // Ordenar por año descendente y mes ascendente
+        rows.sort((a, b) => {
+            if (a.anio !== b.anio) return b.anio - a.anio;
+            return a.mes - b.mes;
+        });
+        return rows;
+    }, [honorariosContables]);
+
+    // Paginación sobre el array aplanado
+    const paginatedRows = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return flatRows.slice(start, start + itemsPerPage);
+    }, [flatRows, currentPage]);
 
     const totalPages = Math.ceil(flatRows.length / itemsPerPage) || 1;
 
@@ -119,30 +146,31 @@ const HonoraryList = ({
                     </tr>
                     </thead>
                     <tbody>
-                    {honorariosContables.length === 0 ? (
+                    {paginatedRows.length === 0 ? (
                         <tr>
-                            <td colSpan="7" className="py-4 px-6 text-center text-gray-500 dark:text-gray-300">
+                            <td
+                                colSpan="7"
+                                className="py-4 px-6 text-center text-gray-500 dark:text-gray-300"
+                            >
                                 <h4>No hay honorarios disponibles</h4>
                                 <p>Revisa más tarde o agrega nuevos honorarios.</p>
                             </td>
                         </tr>
                     ) : (
                         // Al renderizar, si el año cambia, insertar una fila de grupo
-                        honorariosContables.flatMap((honorario) =>
-                            honorario.meses.map((mes, mesIndex) => {
-                                const showYearHeader =
-                                    mesIndex === 0 &&
-                                    (honorariosContables.indexOf(honorario) === 0 ||
-                                        honorario.anio !== honorariosContables[honorariosContables.indexOf(honorario) - 1]?.anio);
-                                return (
-                                    <React.Fragment key={`${honorario.honorarioId}-${mes.mes}`}>
-                                        {showYearHeader && (
-                                            <tr className="bg-gray-100 dark:bg-gray-700">
-                                                <td colSpan="7" className="py-2 px-4 text-center text-lg font-semibold text-gray-800 dark:text-gray-200">
-                                                    {honorario.anio}
-                                                </td>
-                                            </tr>
-                                        )}
+                        paginatedRows.map((row, index) => {
+                            const showYearHeader =
+                                index === 0 ||
+                                row.anio !== paginatedRows[index - 1].anio;
+                            return (
+                                <React.Fragment key={`${row.honorarioId}-${row.mes}`}>
+                                    {showYearHeader && (
+                                        <tr className="bg-gray-100 dark:bg-gray-700">
+                                            <td colSpan="7" className="py-2 px-4 text-center text-lg font-semibold text-gray-800 dark:text-gray-200">
+                                                {row.anio}
+                                            </td>
+                                        </tr>
+                                    )}
                                     <tr className="border-b dark:border-gray-600 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors duration-200">
                                         <td className="py-4 px-6 text-center text-gray-700 dark:text-gray-300">
                                             ${Number(row.montoMensual).toLocaleString("es-CL")}
@@ -208,9 +236,8 @@ const HonoraryList = ({
                                         </td>
                                     </tr>
                                 </React.Fragment>
-                                );
-                            })
-                        )
+                            );
+                        })
                     )}
                     </tbody>
                 </table>
@@ -227,8 +254,8 @@ const HonoraryList = ({
                     <FaChevronLeft className="text-gray-500 dark:text-gray-300" />
                 </button>
                 <span className="text-sm dark:text-gray-400">
-                    Página {currentPage} de {totalPages} ({totalElements} registros)
-                </span>
+    Página {currentPage} de {totalPages}
+  </span>
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}

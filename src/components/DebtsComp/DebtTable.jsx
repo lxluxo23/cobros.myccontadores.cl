@@ -18,13 +18,6 @@ import DebtList from "./DebtList";
 import { config } from "../../config/config";
 
 const DebtTable = ({ debts = [], honorariosContables = [], clienteId, handleEditDebt }) => {
-
-    const [totalPagesDebts, setTotalPagesDebts] = useState(1);
-    const [totalElementsDebts, setTotalElementsDebts] = useState(0);
-
-    const [totalPagesHonorarios, setTotalPagesHonorarios] = useState(1);
-    const [totalElementsHonorarios, setTotalElementsHonorarios] = useState(0);
-
     // Estados para deudas
     const [currentPageDebts, setCurrentPageDebts] = useState(1);
     const [loadingDebts, setLoadingDebts] = useState(false);
@@ -59,14 +52,10 @@ const DebtTable = ({ debts = [], honorariosContables = [], clienteId, handleEdit
     const fetchHonorarios = async () => {
         setLoadingHonorarios(true);
         try {
-            const response = await fetch(
-                `${config.apiUrl}/api/honorarios/cliente/${clienteId}?page=${currentPageHonorarios - 1}&size=12`
-            );
+            const response = await fetch(`${config.apiUrl}/api/honorarios/cliente/${clienteId}`);
             if (!response.ok) throw new Error("Error al obtener los honorarios contables.");
             const data = await response.json();
-            setHonorariosData(data.content);
-            setTotalPagesHonorarios(data.totalPages);
-            setTotalElementsHonorarios(data.totalElements);
+            setHonorariosData(data);
         } catch (err) {
             console.error(err.message);
         } finally {
@@ -78,14 +67,9 @@ const DebtTable = ({ debts = [], honorariosContables = [], clienteId, handleEdit
     const fetchDebts = async () => {
         setLoadingDebts(true);
         try {
-            const response = await fetch(
-                `${config.apiUrl}/api/deudas/cliente/${clienteId}?page=${currentPageDebts - 1}&size=10`
-            );
+            const response = await fetch(`${config.apiUrl}/api/deudas/cliente/${clienteId}`);
             if (!response.ok) throw new Error("Error al obtener las deudas.");
-            const data = await response.json();
-            setDebts(data.content);
-            setTotalPagesDebts(data.totalPages);
-            setTotalElementsDebts(data.totalElements);
+            // No se actualiza aquí porque se asume que las deudas vienen como prop
         } catch (err) {
             console.error(err.message);
         } finally {
@@ -306,8 +290,6 @@ const DebtTable = ({ debts = [], honorariosContables = [], clienteId, handleEdit
                     <HonoraryList
                         honorariosContables={honorariosData}
                         currentPage={currentPageHonorarios}
-                        totalPages={totalPagesHonorarios}
-                        totalElements={totalElementsHonorarios}
                         onPageChange={setCurrentPageHonorarios}
                         handleViewHonorarioDetails={handleViewHonorarioDetails}
                         handleDeleteHonorario={handleDeleteHonorario}
