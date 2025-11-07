@@ -34,7 +34,7 @@ const PageNumber = React.memo(function PageNumber({ number, isActive, onClick })
     );
 });
 
-function Pagination({ currentPage, totalPages, onPrevious, onNext, onPageClick }) {
+function Pagination({ currentPage, totalPages, totalElements, onPrevious, onNext, onPageClick }) {
     // Usamos useMemo para calcular la lista de números de página solo cuando sea necesario
     const pageNumbers = useMemo(() => {
         const pageNumbersList = [];
@@ -56,19 +56,24 @@ function Pagination({ currentPage, totalPages, onPrevious, onNext, onPageClick }
                 <PageNumber key={1} number={1} isActive={1 === currentPage} onClick={onPageClick} />,
                 <PageNumber key={2} number={2} isActive={2 === currentPage} onClick={onPageClick} />
             );
+
             if (currentPage > 4) {
-                pageNumbersList.push(<span key="start-ellipsis">...</span>);
+                pageNumbersList.push(<span key="start-ellipsis" className="px-2">...</span>);
             }
+
             const startPage = Math.max(3, currentPage - 1);
             const endPage = Math.min(totalPages - 2, currentPage + 1);
+
             for (let i = startPage; i <= endPage; i++) {
                 pageNumbersList.push(
                     <PageNumber key={i} number={i} isActive={i === currentPage} onClick={onPageClick} />
                 );
             }
+
             if (currentPage < totalPages - 3) {
-                pageNumbersList.push(<span key="end-ellipsis">...</span>);
+                pageNumbersList.push(<span key="end-ellipsis" className="px-2">...</span>);
             }
+
             pageNumbersList.push(
                 <PageNumber key={totalPages - 1} number={totalPages - 1} isActive={(totalPages - 1) === currentPage} onClick={onPageClick} />,
                 <PageNumber key={totalPages} number={totalPages} isActive={totalPages === currentPage} onClick={onPageClick} />
@@ -78,15 +83,24 @@ function Pagination({ currentPage, totalPages, onPrevious, onNext, onPageClick }
         return pageNumbersList;
     }, [currentPage, totalPages, onPageClick]);
 
+    if (totalPages === 0) {
+        return null; // No mostrar paginación si no hay páginas
+    }
+
     return (
         <nav
             className="flex gap-4 items-center justify-center mt-12 ml-3 max-w-full text-sm tracking-tight whitespace-nowrap text-zinc-700 max-md:mt-10"
             aria-label="Pagination"
             style={{ fontFamily: 'Work Sans, sans-serif', letterSpacing: '-2%' }}
         >
-            {/* Indicador de página actual */}
+            {/* Indicador de página actual con total de elementos */}
             <div className="text-center font-medium">
                 Página {currentPage} de {totalPages}
+                {totalElements > 0 && (
+                    <span className="text-xs text-gray-500 ml-2">
+                        ({totalElements} clientes totales)
+                    </span>
+                )}
             </div>
 
             {/* Botones de navegación y números de página */}
