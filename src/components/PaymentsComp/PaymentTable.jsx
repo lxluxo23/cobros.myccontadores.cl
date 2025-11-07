@@ -24,6 +24,10 @@ const PaymentTable = ({ payments }) => {
     const [selectedDebtType, setSelectedDebtType] = useState("");
     const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(false);
+
     // Extraer tipos únicos de deuda
     useMemo(() => {
         const tiposUnicos = [...new Set(payments.map((pago) => pago.deuda?.tipoDeuda))]
@@ -41,88 +45,6 @@ const PaymentTable = ({ payments }) => {
     const formatAmount = (amount) =>
         amount.toLocaleString("es-CL", { style: "currency", currency: "CLP" });
 
-    // Filtrar pagos
-    const filteredPayments = useMemo(() => {
-        return payments.filter((payment) => {
-            const fechaTransaccion = payment.fechaTransaccion
-                ? dayjs(payment.fechaTransaccion).format("DD/MM/YYYY")
-                : "";
-            const montoFormatted = payment.monto ? formatAmount(payment.monto) : "0";
-            const tipoDeuda = payment.deuda?.tipoDeuda || "";
-            const obsDeuda = payment.deuda?.observaciones || "";
-            const obsPago = payment.observaciones || "";
-
-            const matchesSearchTerm =
-                !searchTerm ||
-                fechaTransaccion.includes(searchTerm) ||
-                montoFormatted.includes(searchTerm) ||
-                tipoDeuda.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                obsDeuda.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                obsPago.toLowerCase().includes(searchTerm.toLowerCase());
-
-            const matchesDebtType = !selectedDebtType || tipoDeuda === selectedDebtType;
-
-            const matchesDateRange = (() => {
-                if (dateRange.start && dateRange.end && payment.fechaTransaccion) {
-                    const fecha = dayjs(payment.fechaTransaccion);
-                    const inicio = dayjs(dateRange.start);
-                    const fin = dayjs(dateRange.end);
-                    return fecha.isBetween(inicio, fin, null, "[]");
-                }
-                return true;
-            })();
-
-            return matchesSearchTerm && matchesDebtType && matchesDateRange;
-        });
-    }, [payments, searchTerm, selectedDebtType, dateRange]);
-
-    // Ordenamiento
-    const sortedPayments = useMemo(() => {
-        const sorted = [...filteredPayments];
-        if (sortConfig) {
-            sorted.sort((a, b) => {
-                let aKey, bKey;
-                switch (sortConfig.key) {
-                    case "fechaTransaccion":
-                        aKey = a.fechaTransaccion ? dayjs(a.fechaTransaccion).valueOf() : 0;
-                        bKey = b.fechaTransaccion ? dayjs(b.fechaTransaccion).valueOf() : 0;
-                        break;
-                    case "monto":
-                        aKey = a.monto || 0;
-                        bKey = b.monto || 0;
-                        break;
-                    case "tipoDeuda":
-                        aKey = a.deuda?.tipoDeuda || "";
-                        bKey = b.deuda?.tipoDeuda || "";
-                        break;
-                    case "observacionesDeuda":
-                        aKey = a.deuda?.observaciones || "";
-                        bKey = b.deuda?.observaciones || "";
-                        break;
-                    case "observaciones":
-                        aKey = a.observaciones || "";
-                        bKey = b.observaciones || "";
-                        break;
-                    default:
-                        aKey = a[sortConfig.key];
-                        bKey = b[sortConfig.key];
-                }
-                if (aKey < bKey) return sortConfig.direction === "ascending" ? -1 : 1;
-                if (aKey > bKey) return sortConfig.direction === "ascending" ? 1 : -1;
-                return 0;
-            });
-        }
-        return sorted;
-    }, [filteredPayments, sortConfig]);
-
-    // Paginación
-    const paginatedPayments = useMemo(() => {
-        const start = (currentPage - 1) * itemsPerPage;
-        return sortedPayments.slice(start, start + itemsPerPage);
-    }, [sortedPayments, currentPage]);
-
-    const totalPages = Math.ceil(filteredPayments.length / itemsPerPage) || 1;
-
     // Manejo de cambio de página
     const handlePageChange = (newPage) => {
         if (newPage < 1) newPage = 1;
@@ -138,6 +60,45 @@ const PaymentTable = ({ payments }) => {
     const handleEndDateChange = (e) => {
         setDateRange((prev) => ({ ...prev, end: e.target.value }));
     };
+
+    const fetchPayments = async (page = 0) => {
+        setLoading(true);
+        setError(null);
+        try {
+            let url = `${config.apiUrl}/api/pagos/cliente/${clienteId}?page=${page}&size=10`;
+
+            // Agregar filtros si existen
+            if (searchTerm) {
+                url += `&search=${encodeURIComponent(searchTerm)}`;
+            }
+            if (selectedDebtType) {
+                url += `&tipoDeuda=${encodeURIComponent(selectedDebtType)}`;
+            }
+            if (dateRange.start && dateRange.end) {
+                url += `&fechaInicio=${dateRange.start}&fechaFin=${dateRange.end}`;
+            }
+            if (sortConfig.key) {
+                url += `&sortBy=${sortConfig.key}&sortDir=${sortConfig.direction === 'ascending' ? 'asc' : 'desc'}`;
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Error al cargar pagos");
+
+            const data = await response.json();
+            setPayments(data.content);
+            setTotalPages(data.totalPages);
+            setTotalElements(data.totalElements);
+            setCurrentPage(page + 1);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPayments(currentPage - 1);
+    }, [currentPage, searchTerm, selectedDebtType, dateRange, sortConfig]);
 
     // Cambio de ordenamiento
     const requestSort = (key) => {
@@ -263,14 +224,14 @@ const PaymentTable = ({ payments }) => {
                         </tr>
                         </thead>
                         <tbody>
-                        {filteredPayments.length === 0 ? (
+                        {payments.length === 0 ? (
                             <tr>
                                 <td colSpan="7" className="p-4 text-center text-gray-500 dark:text-gray-400">
                                     No se encontraron pagos.
                                 </td>
                             </tr>
                         ) : (
-                            paginatedPayments.map((payment, index) => (
+                            payments.map((payment, index) => (
                                 <tr
                                     key={payment.pagoId}
                                     className={`border-b dark:border-gray-600 ${
@@ -324,8 +285,8 @@ const PaymentTable = ({ payments }) => {
                     <FaChevronLeft className="text-gray-500 dark:text-gray-300" />
                 </button>
                 <span className="text-sm dark:text-gray-400">
-          Página {currentPage} de {totalPages}
-        </span>
+                Página {currentPage} de {totalPages} ({totalElements} registros)
+                </span>
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => handlePageChange(currentPage + 1)}
