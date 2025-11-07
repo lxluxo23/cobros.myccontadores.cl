@@ -29,20 +29,40 @@ function MyContadores() {
         const fetchClients = async () => {
             setLoading(true);
             try {
-                const response = await axios.get(`${config.apiUrl}/api/clientes`);
-                // Ordenar inicialmente de forma ascendente
-                const sortedClients = response.data.sort((a, b) =>
-                    a.nombre.localeCompare(b.nombre)
+                const { data: raw } = await axios.get(`${config.apiUrl}/api/clientes`);
+
+                // Normaliza distintas formas de respuesta del backend
+                const arr = Array.isArray(raw)
+                    ? raw
+                    : Array.isArray(raw?.data)
+                        ? raw.data
+                        : Array.isArray(raw?.clientes)
+                            ? raw.clientes
+                            : [];
+
+                if (!Array.isArray(arr)) {
+                    throw new Error("Formato inesperado de respuesta del backend");
+                }
+
+                // Orden seguro (si falta nombre no crashea)
+                const sortedClients = [...arr].sort((a, b) =>
+                    (a?.nombre ?? "").localeCompare(b?.nombre ?? "")
                 );
+
                 setClients(sortedClients);
             } catch (error) {
-                console.error("Error al cargar los clientes:", error.response?.data || error.message);
+                console.error(
+                    "Error al cargar los clientes:",
+                    error.response?.data || error.message
+                );
+                setClients([]); // evita estado inconsistente
             } finally {
                 setLoading(false);
             }
         };
         fetchClients();
     }, []);
+
 
     // Filtrado de clientes según la búsqueda
     const filteredClients = useMemo(() => {
